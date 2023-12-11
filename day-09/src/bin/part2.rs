@@ -8,10 +8,9 @@ fn part2(input: &str) -> String {
     // Split the input into lines
     let lines: std::str::Lines<'_> = input.lines();
 
-    let mut sum: u32 = 0;
+    let mut sum: i64 = 0;
     for line in lines {
-        let line_sum: u32 = parse_line(line).unwrap_or(0);
-        dbg!(line_sum);
+        let line_sum = process(line).unwrap_or(0);
         sum += line_sum;
     }
 
@@ -19,47 +18,61 @@ fn part2(input: &str) -> String {
 }
 
 
-fn parse_line(line: &str) -> Option<u32> {
-    let mut max_red = 0;
-    let mut max_green = 0;
-    let mut max_blue = 0;
+fn process(line: &str) -> Option<i64> {
+    // Split the line into numbers
+    let numbers: Vec<i64> = parse_line(line);
+    let mut first_numbers: Vec<i64> = Vec::new();
+    first_numbers.push(*numbers.first().expect("No first number"));
 
-    let (_, games) = line.split_once(": ")?;
-    let games: Vec<&str> = games.split("; ").collect();
+    // Compute the difference until we get 0
+    let mut difference: Vec<i64> = compute_difference(numbers);
 
-    for game in games {
-        let results = game.split(", ");
-        for result in results {
-            let (count, color) = result.split_once(" ")?;
-            let count: u32 = count.parse().unwrap();
-
-            if color == "red" && count > max_red {
-                max_red = count;
-            } else if color == "green" && count > max_green {
-                max_green = count;
-            } else if color == "blue" && count > max_blue {
-                max_blue = count;
-            }
-        }
+    while difference.last() != Some(&0) {
+        first_numbers.push(*difference.first().expect("No first number"));
+        difference = compute_difference(difference);
     }
 
-    Some(max_red * max_green * max_blue)
+    first_numbers.push(*difference.first().expect("No first number"));
+
+    let mut next_history: Vec<i64> = Vec::new();
+    first_numbers.iter().rev().for_each(|number| {
+        next_history.push(*number - next_history.last().unwrap_or(&0));
+    });
+
+    next_history.last().copied()
 }
 
+fn parse_line(line: &str) -> Vec<i64> {
+    line.split_whitespace()
+        .map(|number| {
+            number.parse::<i64>().unwrap()
+        }).collect()
+}
+
+fn compute_difference(line: Vec<i64>) -> Vec<i64> {
+    line.windows(2)
+        .map(|window| {
+            window[1] - window[0]
+        }).collect()
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_part2() {
+    fn test_part1() {
         let result = part2(
-            "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
-Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
-Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
-Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
-Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green",
+            "10  13  16  21  30  45"
         );
-        assert_eq!(result, "2286");
+        assert_eq!(result, "5");
+    }
+
+    #[test]
+    fn test_compute_difference() {
+        let result = compute_difference(
+            vec![10, 13, 16, 21, 30, 45]
+        );
+        assert_eq!(result, vec![3, 3, 5, 9, 15]);
     }
 }
